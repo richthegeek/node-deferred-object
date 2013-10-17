@@ -1,5 +1,5 @@
 Q = require 'q'
-class DeferredObject
+module.exports = class DeferredObject
 
 	constructor: (data) ->
 		@data = data

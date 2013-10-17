@@ -3,7 +3,7 @@ var DeferredObject, Q;
 
 Q = require('q');
 
-DeferredObject = (function() {
+module.exports = DeferredObject = (function() {
   function DeferredObject(data) {
     var k, v, _ref;
     this.data = data;
