@@ -1,8 +1,12 @@
+# Deferred  Object
+Add deferred properties to an object to allow lazy synchronous evaluation of asynchronous properties.
+
+```
 DeferredObject = require 'deferred-object'
 
 obj = new DeferredObject {}
 obj.defer 'person', (data, callback) ->
-	process.nextTick () ->
+    process.nextTick () ->
 		thing = new DeferredObject {}
 		thing.defer 'name', (data, callback) ->
 			process.nextTick () ->
@@ -11,3 +15,4 @@ obj.defer 'person', (data, callback) ->
 
 obj.eval 'this.person.name', () ->
 	console.log 'result', arguments
+```
