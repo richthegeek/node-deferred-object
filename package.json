@@ -1,0 +1,9 @@
+{
+	"name": "deferred-object",
+	"version": "1.0.0",
+	"description": "Add deferred properties to an object.",
+	"dependencies": {
+		"q": "*"
+	},
+	"main": "./index.js"
+}
