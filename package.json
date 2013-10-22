@@ -1,6 +1,6 @@
 {
 	"name": "deferred-object",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Add deferred properties to an object.",
 	"repository": "git@github.com:richthegeek/node-deferred-object.git",
 	"dependencies": {
