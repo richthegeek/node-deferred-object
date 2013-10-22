@@ -12,22 +12,28 @@ module.exports = class DeferredObject
 	toJSON: ->
 		result = {}
 		for key, val of this.data
-			if val.export?
-				val = val.export()
+			if val and val.toJSON?
+				val = val.toJSON()
 			result[key] = val
 		return result
 
 	defer: (key, getter) ->
+		@[key] ?= null
+		@data[key] ?= null
 		Object.defineProperty @, key, get: =>
-			if @data[key]
-				return @data[key]
+			if val = @data[key]
+				if Q.isPromise val
+					throw val
+				return val
 
 			defer = Q.defer()
-			getter @data, (err, result) =>
+			getter key, @data, (err, result) =>
 				if err
 					return defer.resolve [err]
 				@data[key] = result
 				defer.resolve [null, result]
+
+			@data[key] = defer.promise
 			throw defer.promise
 
 	get: (key, callback) ->

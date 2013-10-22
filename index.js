@@ -27,8 +27,8 @@
       _ref = this.data;
       for (key in _ref) {
         val = _ref[key];
-        if (val["export"] != null) {
-          val = val["export"]();
+        if (val && (val.toJSON != null)) {
+          val = val.toJSON();
         }
         result[key] = val;
       }
@@ -36,21 +36,32 @@
     };
 
     DeferredObject.prototype.defer = function(key, getter) {
-      var _this = this;
+      var _base,
+        _this = this;
+      if (this[key] == null) {
+        this[key] = null;
+      }
+      if ((_base = this.data)[key] == null) {
+        _base[key] = null;
+      }
       return Object.defineProperty(this, key, {
         get: function() {
-          var defer;
-          if (_this.data[key]) {
-            return _this.data[key];
+          var defer, val;
+          if (val = _this.data[key]) {
+            if (Q.isPromise(val)) {
+              throw val;
+            }
+            return val;
           }
           defer = Q.defer();
-          getter(_this.data, function(err, result) {
+          getter(key, _this.data, function(err, result) {
             if (err) {
               return defer.resolve([err]);
             }
             _this.data[key] = result;
             return defer.resolve([null, result]);
           });
+          _this.data[key] = defer.promise;
           throw defer.promise;
         }
       });
