@@ -5,10 +5,20 @@ module.exports = class DeferredObject
 		@data = data
 
 		for k, v of @data
-			@__defineGetter__ k, -> this.data[k]
+			do (k) =>
+				@__defineGetter__ k, ->
+					this.data[k]
+
+	toJSON: ->
+		result = {}
+		for key, val of this.data
+			if val.export?
+				val = val.export()
+			result[key] = val
+		return result
 
 	defer: (key, getter) ->
-		@__defineGetter__ key, =>
+		Object.defineProperty @, key, get: =>
 			if @data[key]
 				return @data[key]
 
