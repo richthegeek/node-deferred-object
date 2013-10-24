@@ -6,18 +6,19 @@
 
   module.exports = DeferredObject = (function() {
     function DeferredObject(data) {
-      var k, v, _fn, _ref,
+      var k, v, _ref,
         _this = this;
       this.data = data;
       _ref = this.data;
-      _fn = function(k) {
-        return _this.__defineGetter__(k, function() {
-          return this.data[k];
-        });
-      };
       for (k in _ref) {
         v = _ref[k];
-        _fn(k);
+        if (k !== 'data') {
+          (function(k) {
+            return _this.__defineGetter__(k, function() {
+              return this.data[k];
+            });
+          })(k);
+        }
       }
     }
 

@@ -4,7 +4,7 @@ module.exports = class DeferredObject
 	constructor: (data) ->
 		@data = data
 
-		for k, v of @data
+		for k, v of @data when k isnt 'data'
 			do (k) =>
 				@__defineGetter__ k, ->
 					this.data[k]
