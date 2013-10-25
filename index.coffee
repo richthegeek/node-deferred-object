@@ -36,12 +36,25 @@ module.exports = class DeferredObject
 			@data[key] = defer.promise
 			throw defer.promise
 
-	get: (key, callback) ->
-		@eval "this.#{key}", callback
+	get: (key, context, callback) ->
+		@eval "this.#{key}", context, callback
 
-	eval: (str, callback) ->
+	eval: (str, context, callback) ->
+		if typeof context is 'function'
+			callback = context
+			context = {}
+
+		self = @
 		try
-			callback null, eval str
+			`
+			with(context) {
+				fn = function() {
+					result = eval(str);
+					callback(null, result);
+				}
+				fn.call(self)
+			}`
+			return null
 		catch err
 			err.then ?= -> callback err
 			err.then (arg) =>

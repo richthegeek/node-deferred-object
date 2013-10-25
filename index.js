@@ -68,15 +68,28 @@
       });
     };
 
-    DeferredObject.prototype.get = function(key, callback) {
-      return this["eval"]("this." + key, callback);
+    DeferredObject.prototype.get = function(key, context, callback) {
+      return this["eval"]("this." + key, context, callback);
     };
 
-    DeferredObject.prototype["eval"] = function(str, callback) {
-      var err,
+    DeferredObject.prototype["eval"] = function(str, context, callback) {
+      var err, self,
         _this = this;
+      if (typeof context === 'function') {
+        callback = context;
+        context = {};
+      }
+      self = this;
       try {
-        return callback(null, eval(str));
+        
+			with(context) {
+				fn = function() {
+					result = eval(str);
+					callback(null, result);
+				}
+				fn.call(self)
+			};
+        return null;
       } catch (_error) {
         err = _error;
         if (err.then == null) {
