@@ -83,28 +83,44 @@
       return this["eval"]("this." + key, context, callback);
     };
 
-    DeferredObject.prototype["eval"] = function(str, context, callback) {
-      var err, fn, onComplete, onReject, onResolve, self,
+    DeferredObject.prototype["eval"] = function(str, context, defer, callback) {
+      var args, err, last, onComplete, onReject, onResolve, self,
         _this = this;
-      if (typeof context === 'function') {
-        callback = context;
-        context = {};
-      }
       self = this;
+      args = Array.prototype.slice.call(arguments, 1);
+      last = args.pop();
+      if (typeof last === 'function') {
+        callback = last;
+        last = args.pop();
+      }
+      if (last && (last.promise != null)) {
+        defer = last;
+        last = args.pop();
+      } else {
+        defer = Q.defer();
+      }
+      context = last || {};
       onComplete = function(result) {
-        return callback(null, result);
+        if (typeof callback === "function") {
+          callback(null, result);
+        }
+        return defer.resolve(result);
       };
       onResolve = function(result) {
-        return _this["eval"](str, callback);
+        return _this["eval"](str, context, defer, callback);
       };
       onReject = function(reason) {
-        return callback(reason);
+        if (typeof callback === "function") {
+          callback(reason);
+        }
+        return defer.reject(reason);
       };
       try {
-        fn = function() {
-          return onComplete(eval(str));
-        };
-        with(context) { fn.call(self) };
+        with(context) {
+				(function() {
+					onComplete(eval(str))
+				}).call(self)
+			};
         return null;
       } catch (_error) {
         err = _error;
@@ -113,8 +129,9 @@
             return onReject(err);
           };
         }
-        return err.then(onResolve, onReject);
+        err.then(onResolve, onReject);
       }
+      return defer.promise;
     };
 
     return DeferredObject;

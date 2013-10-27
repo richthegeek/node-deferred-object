@@ -47,20 +47,45 @@ module.exports = class DeferredObject
 	get: (key, context, callback) ->
 		@eval "this.#{key}", context, callback
 
-	eval: (str, context, callback) ->
-		if typeof context is 'function'
-			callback = context
-			context = {}
-
+	eval: (str, context, defer, callback) ->
 		self = @
-		onComplete = (result) -> callback null, result
-		onResolve = (result) => @eval str, callback
-		onReject = (reason) -> callback reason
+
+		# a bunch of shuffling to allow various arrangments of optional arguments
+		args = Array::slice.call arguments, 1
+		last = args.pop()
+
+		if typeof last is 'function'
+			callback = last
+			last = args.pop()
+
+		if last and last.promise?
+			defer = last
+			last = args.pop()
+		else
+			defer = Q.defer()
+
+		context = last or {}
+
+		onComplete = (result) ->
+			callback? null, result
+			defer.resolve result
+
+		onResolve = (result) =>
+			@eval str, context, defer, callback
+
+		onReject = (reason) ->
+			callback? reason
+			defer.reject reason
 
 		try
-			fn = -> onComplete eval str
-			`with(context) { fn.call(self) }`
+			`with(context) {
+				(function() {
+					onComplete(eval(str))
+				}).call(self)
+			}`
 			return null
 		catch err
 			err.then ?= -> onReject err
 			err.then onResolve, onReject
+
+		return defer.promise
