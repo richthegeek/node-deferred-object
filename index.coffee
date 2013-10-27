@@ -28,10 +28,18 @@ module.exports = class DeferredObject
 
 			defer = Q.defer()
 			getter key, @data, (err, result) =>
+				error = (err) -> defer.reject err
+				complete = (result) =>
+					@data[key] = result
+					defer.resolve result
+
 				if err
-					return defer.resolve [err]
-				@data[key] = result
-				defer.resolve [null, result]
+					return error err
+
+				if Q.isPromise result
+					result.then complete, error
+				else
+					complete result
 
 			@data[key] = defer.promise
 			throw defer.promise
@@ -45,20 +53,14 @@ module.exports = class DeferredObject
 			context = {}
 
 		self = @
+		onComplete = (result) -> callback null, result
+		onResolve = (result) => @eval str, callback
+		onReject = (reason) -> callback reason
+
 		try
-			`
-			with(context) {
-				fn = function() {
-					result = eval(str);
-					callback(null, result);
-				}
-				fn.call(self)
-			}`
+			fn = -> onComplete eval str
+			`with(context) { fn.call(self) }`
 			return null
 		catch err
-			err.then ?= -> callback err
-			err.then (arg) =>
-				[err, result] = arg
-				if err
-					return callback err
-				@eval str, callback
+			err.then ?= -> onReject err
+			err.then onResolve, onReject

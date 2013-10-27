@@ -56,11 +56,22 @@
           }
           defer = Q.defer();
           getter(key, _this.data, function(err, result) {
+            var complete, error;
+            error = function(err) {
+              return defer.reject(err);
+            };
+            complete = function(result) {
+              _this.data[key] = result;
+              return defer.resolve(result);
+            };
             if (err) {
-              return defer.resolve([err]);
+              return error(err);
             }
-            _this.data[key] = result;
-            return defer.resolve([null, result]);
+            if (Q.isPromise(result)) {
+              return result.then(complete, error);
+            } else {
+              return complete(result);
+            }
           });
           _this.data[key] = defer.promise;
           throw defer.promise;
@@ -73,38 +84,36 @@
     };
 
     DeferredObject.prototype["eval"] = function(str, context, callback) {
-      var err, self,
+      var err, fn, onComplete, onReject, onResolve, self,
         _this = this;
       if (typeof context === 'function') {
         callback = context;
         context = {};
       }
       self = this;
+      onComplete = function(result) {
+        return callback(null, result);
+      };
+      onResolve = function(result) {
+        return _this["eval"](str, callback);
+      };
+      onReject = function(reason) {
+        return callback(reason);
+      };
       try {
-        
-			with(context) {
-				fn = function() {
-					result = eval(str);
-					callback(null, result);
-				}
-				fn.call(self)
-			};
+        fn = function() {
+          return onComplete(eval(str));
+        };
+        with(context) { fn.call(self) };
         return null;
       } catch (_error) {
         err = _error;
         if (err.then == null) {
           err.then = function() {
-            return callback(err);
+            return onReject(err);
           };
         }
-        return err.then(function(arg) {
-          var result;
-          err = arg[0], result = arg[1];
-          if (err) {
-            return callback(err);
-          }
-          return _this["eval"](str, callback);
-        });
+        return err.then(onResolve, onReject);
       }
     };
 
