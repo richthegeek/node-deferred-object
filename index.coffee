@@ -67,6 +67,8 @@ module.exports = class DeferredObject
 		context = last or {}
 
 		onComplete = (result) ->
+			if result? and result.then?
+				return result.then onComplete, onReject
 			callback? null, result
 			defer.resolve result
 

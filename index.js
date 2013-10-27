@@ -101,6 +101,9 @@
       }
       context = last || {};
       onComplete = function(result) {
+        if ((result != null) && (result.then != null)) {
+          return result.then(onComplete, onReject);
+        }
         if (typeof callback === "function") {
           callback(null, result);
         }
