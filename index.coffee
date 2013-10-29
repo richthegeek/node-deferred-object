@@ -1,3 +1,4 @@
+Contextify = require 'contextify'
 Q = require 'q'
 module.exports = class DeferredObject
 
@@ -66,6 +67,7 @@ module.exports = class DeferredObject
 
 		context = last or {}
 
+
 		onComplete = (result) ->
 			if result? and result.then?
 				return result.then onComplete, onReject
@@ -80,12 +82,10 @@ module.exports = class DeferredObject
 			defer.reject reason
 
 		try
-			`with(context) {
-				(function() {
-					onComplete(eval(str))
-				}).call(self)
-			}`
-			return null
+			context['this'] = @
+			sandbox = Contextify(context)
+			onComplete sandbox.run(str)
+			sandbox.dispose()
 		catch err
 			err.then ?= -> onReject err
 			err.then onResolve, onReject
