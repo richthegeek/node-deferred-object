@@ -67,30 +67,43 @@ module.exports = class DeferredObject
 
 		context = last or {}
 
+		called = false
+		cb = (err, res) ->
+			if called
+				console.log 'Already called?', err, res
+				return
+			called = true
+			callback? err, res
+
 		onComplete = (result) ->
 			if result? and result.then?
 				return result.then onComplete, onReject
-			callback? null, result
+			cb? null, result
 			defer.resolve result
 
 		onResolve = (result) =>
-			@eval str, context, defer, callback
+			@eval.call self, str, context, defer, callback
 
 		onReject = (reason) ->
-			callback? reason
+			cb? reason
 			defer.reject reason
 
 		try
-			`
-			with(context) {
-				fn = function() {
-					result = eval(str)
-					onComplete(result)
-				}
-				fn.call(self)
-			}
-			`
-			return null
+			sandbox = {}
+			for k, v of context
+				sandbox[k] = v
+			for k, v of self
+				sandbox[k] = v
+			delete sandbox['eval']
+
+			result = null
+			sandbox.result = null
+			sandbox.str = str
+			Contextify sandbox
+			sandbox.run("result = eval(str)")
+			onComplete sandbox.result
+			sandbox.dispose()
+			return result
 		catch err
 			err.then ?= -> onReject err
 			err.then onResolve, onReject

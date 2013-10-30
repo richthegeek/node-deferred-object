@@ -86,7 +86,7 @@
     };
 
     DeferredObject.prototype["eval"] = function(str, context, defer, callback) {
-      var args, err, last, onComplete, onReject, onResolve, self,
+      var args, called, cb, err, k, last, onComplete, onReject, onResolve, result, sandbox, self, v,
         _this = this;
       self = this;
       args = Array.prototype.slice.call(arguments, 1);
@@ -102,35 +102,52 @@
         defer = Q.defer();
       }
       context = last || {};
+      called = false;
+      cb = function(err, res) {
+        if (called) {
+          console.log('Already called?', err, res);
+          return;
+        }
+        called = true;
+        return typeof callback === "function" ? callback(err, res) : void 0;
+      };
       onComplete = function(result) {
         if ((result != null) && (result.then != null)) {
           return result.then(onComplete, onReject);
         }
-        if (typeof callback === "function") {
-          callback(null, result);
+        if (typeof cb === "function") {
+          cb(null, result);
         }
         return defer.resolve(result);
       };
       onResolve = function(result) {
-        return _this["eval"](str, context, defer, callback);
+        return _this["eval"].call(self, str, context, defer, callback);
       };
       onReject = function(reason) {
-        if (typeof callback === "function") {
-          callback(reason);
+        if (typeof cb === "function") {
+          cb(reason);
         }
         return defer.reject(reason);
       };
       try {
-        
-			with(context) {
-				fn = function() {
-					result = eval(str)
-					onComplete(result)
-				}
-				fn.call(self)
-			}
-			;
-        return null;
+        sandbox = {};
+        for (k in context) {
+          v = context[k];
+          sandbox[k] = v;
+        }
+        for (k in self) {
+          v = self[k];
+          sandbox[k] = v;
+        }
+        delete sandbox['eval'];
+        result = null;
+        sandbox.result = null;
+        sandbox.str = str;
+        Contextify(sandbox);
+        sandbox.run("result = eval(str)");
+        onComplete(sandbox.result);
+        sandbox.dispose();
+        return result;
       } catch (_error) {
         err = _error;
         if (err.then == null) {
