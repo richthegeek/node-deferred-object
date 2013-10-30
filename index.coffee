@@ -67,7 +67,6 @@ module.exports = class DeferredObject
 
 		context = last or {}
 
-
 		onComplete = (result) ->
 			if result? and result.then?
 				return result.then onComplete, onReject
@@ -82,10 +81,16 @@ module.exports = class DeferredObject
 			defer.reject reason
 
 		try
-			context['this'] = @
-			sandbox = Contextify(context)
-			onComplete sandbox.run(str)
-			sandbox.dispose()
+			`
+			with(context) {
+				fn = function() {
+					result = eval(str)
+					onComplete(result)
+				}
+				fn.call(self)
+			}
+			`
+			return null
 		catch err
 			err.then ?= -> onReject err
 			err.then onResolve, onReject

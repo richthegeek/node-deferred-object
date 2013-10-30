@@ -86,7 +86,7 @@
     };
 
     DeferredObject.prototype["eval"] = function(str, context, defer, callback) {
-      var args, err, last, onComplete, onReject, onResolve, sandbox, self,
+      var args, err, last, onComplete, onReject, onResolve, self,
         _this = this;
       self = this;
       args = Array.prototype.slice.call(arguments, 1);
@@ -121,10 +121,16 @@
         return defer.reject(reason);
       };
       try {
-        context['this'] = this;
-        sandbox = Contextify(context);
-        onComplete(sandbox.run(str));
-        sandbox.dispose();
+        
+			with(context) {
+				fn = function() {
+					result = eval(str)
+					onComplete(result)
+				}
+				fn.call(self)
+			}
+			;
+        return null;
       } catch (_error) {
         err = _error;
         if (err.then == null) {
