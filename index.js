@@ -105,7 +105,7 @@
       called = false;
       cb = function(err, res) {
         if (called) {
-          console.log('Already called?', err, res);
+          console.log('Already called?', err, str, res);
           return;
         }
         called = true;
