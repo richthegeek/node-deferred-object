@@ -145,7 +145,7 @@
         sandbox.str = str;
         Contextify(sandbox);
         sandbox.run("result = eval(str)");
-        onComplete(sandbox.result);
+        result = sandbox.result;
         sandbox.dispose();
         return result;
       } catch (_error) {
@@ -157,6 +157,7 @@
         }
         err.then(onResolve, onReject);
       }
+      onComplete(result);
       return defer.promise;
     };
 
