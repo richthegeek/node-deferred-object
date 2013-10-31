@@ -103,10 +103,11 @@ module.exports = class DeferredObject
 			sandbox.run("result = eval(str)")
 			result = sandbox.result
 			sandbox.dispose()
-			return result
 		catch err
 			err.then ?= -> onReject err
 			err.then onResolve, onReject
+			return
 
 		onComplete result
+
 		return defer.promise

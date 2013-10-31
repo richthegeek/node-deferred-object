@@ -147,7 +147,6 @@
         sandbox.run("result = eval(str)");
         result = sandbox.result;
         sandbox.dispose();
-        return result;
       } catch (_error) {
         err = _error;
         if (err.then == null) {
@@ -156,6 +155,7 @@
           };
         }
         err.then(onResolve, onReject);
+        return;
       }
       onComplete(result);
       return defer.promise;
