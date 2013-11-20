@@ -50,7 +50,7 @@
       return Object.defineProperty(this, key, {
         get: function() {
           var defer, val;
-          if (val = _this.data[key]) {
+          if ((val = _this.data[key]) != null) {
             if (Q.isPromise(val)) {
               throw val;
             }
@@ -63,6 +63,7 @@
               return defer.reject(err);
             };
             complete = function(result) {
+              console.log('defer_complete', result);
               _this.data[key] = result;
               return defer.resolve(result);
             };
@@ -89,6 +90,7 @@
       var args, called, cb, err, k, last, onComplete, onReject, onResolve, result, sandbox, self, v,
         _this = this;
       self = this;
+      console.log('NDO', str);
       args = Array.prototype.slice.call(arguments, 1);
       last = args.pop();
       if (typeof last === 'function') {
@@ -112,6 +114,7 @@
         return typeof callback === "function" ? callback(err, res) : void 0;
       };
       onComplete = function(result) {
+        console.log('complete', result);
         if ((result != null) && (result.then != null)) {
           return result.then(onComplete, onReject);
         }
@@ -121,9 +124,11 @@
         return defer.resolve(result);
       };
       onResolve = function(result) {
+        console.log('resolve', result);
         return _this["eval"].call(self, str, context, defer, callback);
       };
       onReject = function(reason) {
+        console.log('reject', reason);
         if (typeof cb === "function") {
           cb(reason);
         }
@@ -131,12 +136,12 @@
       };
       try {
         sandbox = {};
-        for (k in context) {
-          v = context[k];
-          sandbox[k] = v;
-        }
         for (k in self) {
           v = self[k];
+          sandbox[k] = v;
+        }
+        for (k in context) {
+          v = context[k];
           sandbox[k] = v;
         }
         delete sandbox['eval'];

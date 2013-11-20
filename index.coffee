@@ -22,7 +22,7 @@ module.exports = class DeferredObject
 		@[key] ?= null
 		@data[key] ?= null
 		Object.defineProperty @, key, get: =>
-			if val = @data[key]
+			if (val = @data[key])?
 				if Q.isPromise val
 					throw val
 				return val
@@ -31,6 +31,7 @@ module.exports = class DeferredObject
 			getter key, @data, (err, result) =>
 				error = (err) -> defer.reject err
 				complete = (result) =>
+					console.log 'defer_complete', result
 					@data[key] = result
 					defer.resolve result
 
@@ -50,6 +51,8 @@ module.exports = class DeferredObject
 
 	eval: (str, context, defer, callback) ->
 		self = @
+
+		console.log 'NDO', str
 
 		# a bunch of shuffling to allow various arrangments of optional arguments
 		args = Array::slice.call arguments, 1
@@ -76,15 +79,18 @@ module.exports = class DeferredObject
 			callback? err, res
 
 		onComplete = (result) ->
+			console.log 'complete', result
 			if result? and result.then?
 				return result.then onComplete, onReject
 			cb? null, result
 			defer.resolve result
 
 		onResolve = (result) =>
+			console.log 'resolve', result
 			@eval.call self, str, context, defer, callback
 
 		onReject = (reason) ->
+			console.log 'reject', reason
 			cb? reason
 			defer.reject reason
 
