@@ -93,7 +93,7 @@ module.exports = class DeferredObject
 			for k, v of context
 				sandbox[k] = v
 			for k, v of self
-				sandbox[k] = v
+				sandbox[k] ?= v
 			delete sandbox['eval']
 
 			result = null
