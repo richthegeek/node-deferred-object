@@ -39,18 +39,15 @@
     };
 
     DeferredObject.prototype.defer = function(key, getter) {
-      var _base,
-        _this = this;
+      var _this = this;
       if (this[key] == null) {
         this[key] = null;
-      }
-      if ((_base = this.data)[key] == null) {
-        _base[key] = null;
       }
       return Object.defineProperty(this, key, {
         get: function() {
           var defer, val;
-          if ((val = _this.data[key]) != null) {
+          if (typeof _this.data[key] !== 'undefined') {
+            val = _this.data[key];
             if (Q.isPromise(val)) {
               throw val;
             }

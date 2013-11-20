@@ -20,9 +20,9 @@ module.exports = class DeferredObject
 
 	defer: (key, getter) ->
 		@[key] ?= null
-		@data[key] ?= null
 		Object.defineProperty @, key, get: =>
-			if (val = @data[key])?
+			if typeof @data[key] isnt 'undefined'
+				val = @data[key]
 				if Q.isPromise val
 					throw val
 				return val
