@@ -8,20 +8,26 @@
 
   module.exports = DeferredObject = (function() {
     function DeferredObject(data) {
-      var k, v, _ref,
+      var k, keys, v,
         _this = this;
       this.data = data;
-      _ref = this.data;
-      for (k in _ref) {
-        v = _ref[k];
-        if (k !== 'data') {
-          (function(k) {
-            return _this.__defineGetter__(k, function() {
-              return this.data[k];
-            });
-          })(k);
+      keys = (function() {
+        var _ref, _results;
+        _ref = this.data;
+        _results = [];
+        for (k in _ref) {
+          v = _ref[k];
+          if (k !== 'data') {
+            _results.push(k);
+          }
         }
-      }
+        return _results;
+      }).call(this);
+      keys.forEach(function(k) {
+        return _this.__defineGetter__(k, function() {
+          return this.data[k];
+        });
+      });
     }
 
     DeferredObject.prototype.toJSON = function() {
@@ -39,16 +45,22 @@
     };
 
     DeferredObject.prototype.defer = function(key, getter) {
-      var _this = this;
+      var set,
+        _this = this;
+      set = function(val) {
+        delete _this[key];
+        return _this[key] = _this.data[key] = val;
+      };
       if (this[key] == null) {
         this[key] = null;
       }
+      this.data[key] = void 0;
       return Object.defineProperty(this, key, {
         get: function() {
           var defer, val;
           if (typeof _this.data[key] !== 'undefined') {
             val = _this.data[key];
-            if (Q.isPromise(val)) {
+            if (val.then != null) {
               throw val;
             }
             return val;
@@ -56,13 +68,8 @@
           defer = Q.defer();
           getter(key, _this.data, function(err, result) {
             var complete, error;
-            error = function(err) {
-              return defer.reject(err);
-            };
-            complete = function(result) {
-              _this.data[key] = result;
-              return defer.resolve(result);
-            };
+            error = defer.reject;
+            complete = defer.resolve;
             if (err) {
               return error(err);
             }
@@ -72,7 +79,10 @@
               return complete(result);
             }
           });
-          _this.data[key] = defer.promise;
+          set(defer.promise);
+          defer.promise.then(function(result) {
+            return set(result);
+          });
           throw defer.promise;
         }
       });
@@ -82,80 +92,62 @@
       return this["eval"]("this." + key, context, callback);
     };
 
-    DeferredObject.prototype["eval"] = function(str, context, defer, callback) {
-      var args, called, cb, err, k, last, onComplete, onReject, onResolve, result, sandbox, self, v,
+    DeferredObject.prototype["eval"] = function(str, context, callback) {
+      var cb, onComplete, onReject, onResolve, sandbox,
         _this = this;
-      self = this;
-      args = Array.prototype.slice.call(arguments, 1);
-      last = args.pop();
-      if (typeof last === 'function') {
-        callback = last;
-        last = args.pop();
+      if (typeof context === 'function') {
+        callback = context;
+        context = {};
       }
-      if (last && (last.promise != null)) {
-        defer = last;
-        last = args.pop();
-      } else {
-        defer = Q.defer();
-      }
-      context = last || {};
-      called = false;
       cb = function(err, res) {
-        if (called) {
-          console.log('Already called?', err, str, res);
-          return;
-        }
-        called = true;
-        return typeof callback === "function" ? callback(err, res) : void 0;
+        return callback(err, res);
       };
       onComplete = function(result) {
         if ((result != null) && (result.then != null)) {
-          return result.then(onComplete, onReject);
+          return result.then(onResolve, onReject);
         }
-        if (typeof cb === "function") {
-          cb(null, result);
-        }
-        return defer.resolve(result);
+        return cb(null, result);
       };
       onResolve = function(result) {
-        return _this["eval"].call(self, str, context, defer, callback);
+        return process.nextTick(function() {
+          return _this["eval"](str, context, callback);
+        });
       };
-      onReject = function(reason) {
-        if (typeof cb === "function") {
-          cb(reason);
+      onReject = cb;
+      sandbox = this;
+      sandbox.result = null;
+      sandbox.error = null;
+      sandbox.str = str;
+      return this.evalEval(str, sandbox, context, function(error, result) {
+        if (error !== null) {
+          if (error.then == null) {
+            error.then = function() {
+              return onReject(error);
+            };
+          }
+          return error.then(onResolve, onReject);
+        } else {
+          return onComplete(result);
         }
-        return defer.reject(reason);
-      };
-      try {
-        sandbox = {};
-        for (k in self) {
-          v = self[k];
-          sandbox[k] = v;
-        }
-        for (k in context) {
-          v = context[k];
-          sandbox[k] = v;
-        }
-        delete sandbox['eval'];
-        result = null;
-        sandbox.result = null;
-        sandbox.str = str;
-        Contextify(sandbox);
-        sandbox.run("result = eval(str)");
-        result = sandbox.result;
-        sandbox.dispose();
-      } catch (_error) {
-        err = _error;
-        if (err.then == null) {
-          err.then = function() {
-            return onReject(err);
-          };
-        }
-        err.then(onResolve, onReject);
-        return;
-      }
-      onComplete(result);
-      return defer.promise;
+      });
+    };
+
+    DeferredObject.prototype.evalEval = function(str, sandbox, context, callback) {
+      var teval;
+      teval = sandbox["eval"];
+      
+		with (sandbox) {
+			with (context) {
+				eval = global.eval
+				try {
+					result = eval(str)
+				} catch (e) {
+					error = e
+				}
+			}
+		};
+      sandbox["eval"] = teval;
+      return callback(sandbox.error, sandbox.result);
     };
 
     return DeferredObject;
@@ -163,3 +155,7 @@
   })();
 
 }).call(this);
+
+/*
+//@ sourceMappingURL=index.map
+*/
