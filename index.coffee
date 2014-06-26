@@ -1,19 +1,19 @@
 blue = require 'bluebird'
 
+locked = true
+
 module.exports = class DeferredObject
 
-	constructor: (data, locking = true) ->
+	constructor: (data, @_locking = true) ->
 		@data = data
-		@_locking = true
-		@_locked = true
 
 		keys = (k for k, v of @data when k isnt 'data')
 		keys.forEach (k) =>
 			@__defineGetter__ k, ->
 				this.data[k]
 
-	lock: -> @_locked = true
-	unlock: -> @_locked = false
+	lock: -> locked = true
+	unlock: -> locked = false
 
 	toJSON: ->
 		result = {}
@@ -38,8 +38,10 @@ module.exports = class DeferredObject
 					throw val
 				return val
 
-			if @_locking and @_locked
+			if @_locking and locked
+				console.info 'locked', key
 				return null
+			console.info 'undef', key
 
 			promise = new blue (resolve, reject) =>
 					getter key, @data, (err, result) =>
