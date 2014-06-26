@@ -1,14 +1,19 @@
-Contextify = require 'contextify'
-Q = require 'q'
+blue = require 'bluebird'
+
 module.exports = class DeferredObject
 
-	constructor: (data) ->
+	constructor: (data, locking = true) ->
 		@data = data
+		@_locking = true
+		@_locked = true
 
 		keys = (k for k, v of @data when k isnt 'data')
 		keys.forEach (k) =>
 			@__defineGetter__ k, ->
 				this.data[k]
+
+	lock: -> @_locked = true
+	unlock: -> @_locked = false
 
 	toJSON: ->
 		result = {}
@@ -33,33 +38,35 @@ module.exports = class DeferredObject
 					throw val
 				return val
 
-			defer = Q.defer()
-			getter key, @data, (err, result) =>
-				error = defer.reject
-				complete = defer.resolve
+			if @_locking and @_locked
+				return null
 
-				if err
-					return error err
-
-				if Q.isPromise result
-					result.then complete, error
-				else
-					complete result
-
-			set defer.promise
-			defer.promise.then (result) => set result
-			throw defer.promise
+			promise = new blue (resolve, reject) =>
+					getter key, @data, (err, result) =>
+						if err
+							return reject err
+						
+						if result?.then?
+							result.then resolve, reject
+						
+						else
+							resolve result
+			set promise
+			promise.then (result) => set result
+			throw promise
 
 	get: (key, context, callback) ->
 		@eval "this.#{key}", context, callback
 
 	eval: (str, context, callback) ->
+		@unlock()
 		if typeof context is 'function'
 			callback = context
 			context = {}
 
 
-		cb = (err, res) ->
+		cb = (err, res) =>
+			@lock()
 			callback err, res
 
 		onComplete = (result) ->
