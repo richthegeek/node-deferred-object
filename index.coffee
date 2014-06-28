@@ -43,28 +43,28 @@ module.exports = class DeferredObject
 				return val
 
 			if @_locking and @_locked
-				# console.trace('locked', key)
+				console.trace('locked', key)
 				return null
 
 			promise = new blue (resolve, reject) =>
-					getter key, @data, (err, result) =>
-						if err
-							return reject err
-						
-						if result?.then?
-							result.then resolve, reject
-						
-						else
-							unlock = (obj) =>
-								if obj?.unlock?
-									@_lockstack.push obj
-									obj.unlock()
+				getter key, @data, (err, result) =>
+					if err
+						return reject err
+					
+					if result?.then?
+						result.then resolve, reject
+					
+					else
+						unlock = (obj) =>
+							if obj?.unlock?
+								@_lockstack.push obj
+								obj.unlock()
 
-							unlock result
-							if Array.isArray result
-								result.forEach unlock
+						unlock result
+						if Array.isArray result
+							result.forEach unlock
 
-							resolve result
+						resolve result
 			set promise
 			promise.then (result) => set result
 			throw promise

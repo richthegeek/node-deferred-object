@@ -83,6 +83,7 @@ module.exports = DeferredObject = (function() {
             return val;
           }
           if (_this._locking && _this._locked) {
+            console.trace('locked', key);
             return null;
           }
           promise = new blue(function(resolve, reject) {
